@@ -1,6 +1,11 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"fhonk/cmd/spotify"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -17,4 +22,24 @@ func corsMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func SpotifyLoginHandler(w http.ResponseWriter, r *http.Request) {
+	// a random state parameter
+	state := "random_generated_state" // replace with actual random state generation
+	authURL := spotify.GenerateAuthURL(state)
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+func SpotifyCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+
+	// exchange code for token
+	_, err := spotify.ExchangeCodeForToken(code)
+	if err != nil {
+		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("Spotify account connected successfully!"))
 }
