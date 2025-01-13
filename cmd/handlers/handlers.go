@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fhonk/cmd/spotify"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -35,11 +36,25 @@ func SpotifyCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
 	// exchange code for token
-	_, err := spotify.ExchangeCodeForToken(code)
+	tokenData, err := spotify.ExchangeCodeForToken(code)
 	if err != nil {
 		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
 		return
 	}
 
-	w.Write([]byte("Spotify account connected successfully!"))
+	accessToken, ok := tokenData["access_token"].(string)
+	if !ok {
+		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
+		return
+	}
+	refreshToken, ok := tokenData["refresh_token"].(string)
+	if !ok {
+		http.Error(w, "Failed to get refresh token", http.StatusInternalServerError)
+		return
+	}
+
+	// return the access token to the frontend
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf(`{"access_token": "%s" , "refresh_token": "%s"}`, accessToken, refreshToken)))
 }
