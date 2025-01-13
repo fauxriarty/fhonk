@@ -31,7 +31,7 @@ func GenerateAuthURL(state string) string {
 	params.Add("response_type", "code")
 	params.Add("redirect_uri", RedirectURI)
 	params.Add("scope", "user-read-recently-played user-top-read") // add required scopes
-	params.Add("state", state)
+	params.Add("state", state)                                     // state should contain the callback URL
 	return fmt.Sprintf("%s?%s", authURL, params.Encode())
 }
 

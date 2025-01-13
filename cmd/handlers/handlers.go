@@ -34,12 +34,16 @@ func SpotifyLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func SpotifyCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
-	state := r.URL.Query().Get("state") // assuming state contains the callback URL
+	state := r.URL.Query().Get("state") // State parameter from the original request
 
-	// exchange code for token
+	if code == "" {
+		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		return
+	}
+
 	tokenData, err := spotify.ExchangeCodeForToken(code)
 	if err != nil {
-		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
+		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -54,9 +58,9 @@ func SpotifyCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// construct the callback URL with access and refresh tokens as query parameters
-	callbackURL := fmt.Sprintf("%s?access_token=%s&refresh_token=%s", state, accessToken, refreshToken)
+	// Construct the callback URL with access and refresh tokens
+	frontendCallbackURL := fmt.Sprintf("%s?access_token=%s&refresh_token=%s", state, accessToken, refreshToken)
 
-	// redirect to the callback URL
-	http.Redirect(w, r, callbackURL, http.StatusFound)
+	// Redirect the user to the frontend callback URL
+	http.Redirect(w, r, frontendCallbackURL, http.StatusFound)
 }
