@@ -2,7 +2,6 @@ package main
 
 import (
 	"fhonk/cmd/db"
-	"fhonk/cmd/db/models"
 	"fhonk/cmd/handlers"
 	"log"
 	"net/http"
@@ -39,11 +38,11 @@ func main() {
 	// }
 
 	//migration
-	if err := db.DB.AutoMigrate(&models.User{}, &models.UserData{}); err != nil {
-		log.Fatalf("Failed to migrate UserData table: %v", err)
-	}
+	// if err := db.DB.AutoMigrate(&models.User{}, &models.UserData{}); err != nil {
+	// 	log.Fatalf("Failed to migrate UserData table: %v", err)
+	// }
 
-	log.Println("Database migrated successfully!")
+	// log.Println("Database migrated successfully!")
 
 	router.GET("/", Status)
 
