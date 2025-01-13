@@ -2,6 +2,7 @@ package main
 
 import (
 	"fhonk/cmd/db"
+	"fhonk/cmd/db/models"
 	"fhonk/cmd/handlers"
 	"log"
 	"net/http"
@@ -31,6 +32,18 @@ func main() {
 	}
 	db.ConnectDB(dsn)
 	defer db.CloseDB()
+
+	// drop existing table
+	// if err := db.DB.Migrator().DropTable(&models.User{}, &models.UserData{}); err != nil {
+	// 	log.Fatalf("Failed to drop existing UserData table: %v", err)
+	// }
+
+	//migration
+	if err := db.DB.AutoMigrate(&models.User{}, &models.UserData{}); err != nil {
+		log.Fatalf("Failed to migrate UserData table: %v", err)
+	}
+
+	log.Println("Database migrated successfully!")
 
 	router.GET("/", Status)
 
