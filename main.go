@@ -17,13 +17,14 @@ func Status(c *gin.Context) {
 	})
 }
 
-func main() {
-	router := gin.Default()
-
+func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
+}
 
+func main() {
+	router := gin.Default()
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL not set in environment")

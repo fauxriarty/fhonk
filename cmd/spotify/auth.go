@@ -7,13 +7,21 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 var (
-	ClientID     = "b08c1f03a8cd4737b8736826779ac062"
-	ClientSecret = "7bf7adc086c64ecb9d2b79845e6db295"
-	RedirectURI  = "http://localhost:8080/callback"
+	ClientID     = getEnv("SPOTIFY_CLIENT_ID", "")
+	ClientSecret = getEnv("SPOTIFY_CLIENT_SECRET", "")
+	RedirectURI  = getEnv("SPOTIFY_REDIRECT_URI", "http://localhost:8080/callback")
 )
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
 
 // creates the Spotify authorization URL
 func GenerateAuthURL(state string) string {
