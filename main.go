@@ -54,9 +54,13 @@ func main() {
 		handlers.SpotifyCallbackHandler(c.Writer, c.Request)
 	})
 
+	router.GET("/login/apple", handlers.AppleMusicLoginHandler)
+
 	port := "8080"
 	log.Printf("listening on port %s", port)
 	if err := router.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
+
+	router.Run()
 }
