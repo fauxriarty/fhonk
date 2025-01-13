@@ -8,19 +8,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func Status(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "hello from da fhonk",
 	})
-}
-
-func init() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
 }
 
 func main() {
