@@ -24,7 +24,11 @@ func init() {
 }
 
 func main() {
-	router := gin.Default()
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New()
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL not set in environment")
@@ -62,5 +66,4 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router.Run()
 }
