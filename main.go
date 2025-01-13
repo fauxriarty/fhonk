@@ -50,7 +50,8 @@ func main() {
 	router.GET("/login/spotify", func(c *gin.Context) {
 		handlers.SpotifyLoginHandler(c.Writer, c.Request)
 	})
-	router.GET("/callback", func(c *gin.Context) {
+
+	router.GET("/spotify-callback", func(c *gin.Context) {
 		handlers.SpotifyCallbackHandler(c.Writer, c.Request)
 	})
 
