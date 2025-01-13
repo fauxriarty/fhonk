@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 )
 
 func Status(c *gin.Context) {
@@ -24,9 +24,9 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	if godotenv.Load() != nil {
-		log.Fatal("Error loading .env file")
-	}
+	// if godotenv.Load() != nil {
+	// 	log.Fatal("Error loading .env file")
+	// }
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
