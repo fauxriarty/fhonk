@@ -24,6 +24,10 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
+func CORSMiddleware() gin.HandlerFunc {
+	return corsMiddleware()
+}
+
 func SpotifyLoginHandler(w http.ResponseWriter, r *http.Request) {
 	frontendCallback := r.URL.Query().Get("callback_url")
 	if frontendCallback == "" {
