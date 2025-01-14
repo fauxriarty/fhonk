@@ -58,7 +58,6 @@ func setupRouter() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	router.Use(handlers.CORSMiddleware()) // Add CORS middleware
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -73,13 +72,9 @@ func setupRouter() *gin.Engine {
 	{
 		auth := v1.Group("/auth")
 		{
-			auth.GET("/spotify", func(c *gin.Context) {
-				handlers.SpotifyLoginHandler(c.Writer, c.Request)
-			})
-			auth.GET("/spotify/callback", func(c *gin.Context) {
-				handlers.SpotifyCallbackHandler(c.Writer, c.Request)
-			})
 			auth.GET("/apple", handlers.AppleMusicLoginHandler)
+			auth.GET("/spotify", handlers.SpotifyLoginHandler)
+			auth.GET("/spotify/callback", handlers.SpotifyCallbackHandler)
 		}
 	}
 
