@@ -4,10 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 var (
@@ -31,26 +31,30 @@ func GenerateAuthURL(state string) string {
 	params.Add("response_type", "code")
 	params.Add("redirect_uri", RedirectURI)
 	params.Add("scope", "user-read-recently-played user-top-read") // add required scopes
-	params.Add("state", state)
+	params.Add("state", state)                                     // state should contain the callback URL
 	return fmt.Sprintf("%s?%s", authURL, params.Encode())
 }
 
+type TokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 // exchanges the authorization code for an access token
-func ExchangeCodeForToken(code string) (map[string]interface{}, error) {
+func ExchangeCodeForToken(code string) (*TokenResponse, error) {
 	tokenURL := "https://accounts.spotify.com/api/token"
 	data := url.Values{}
 	data.Add("grant_type", "authorization_code")
 	data.Add("code", code)
 	data.Add("redirect_uri", RedirectURI)
 
-	req, err := http.NewRequest("POST", tokenURL, nil)
+	req, err := http.NewRequest("POST", tokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Authorization", "Basic "+basicAuth(ClientID, ClientSecret))
-	req.PostForm = data
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -59,16 +63,12 @@ func ExchangeCodeForToken(code string) (map[string]interface{}, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	var tokenResp TokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return nil, err
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return &tokenResp, nil
 }
 
 func basicAuth(clientID, clientSecret string) string {

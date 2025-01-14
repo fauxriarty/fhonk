@@ -25,21 +25,31 @@ func corsMiddleware() gin.HandlerFunc {
 }
 
 func SpotifyLoginHandler(w http.ResponseWriter, r *http.Request) {
-	// a random state parameter
-	state := "random_generated_state" // replace with actual random state generation
-	authURL := spotify.GenerateAuthURL(state)
+	frontendCallback := r.URL.Query().Get("callback_url")
+	if frontendCallback == "" {
+		http.Error(w, "Missing callback URL", http.StatusBadRequest)
+		return
+	}
+
+	authURL := spotify.GenerateAuthURL(frontendCallback)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
 func SpotifyCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
+	frontendCallback := r.URL.Query().Get("state")
 
-	// exchange code for token
-	_, err := spotify.ExchangeCodeForToken(code)
-	if err != nil {
-		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
+	if code == "" {
+		http.Error(w, "Missing authorization code", http.StatusBadRequest)
 		return
 	}
 
-	w.Write([]byte("Spotify account connected successfully!"))
+	tokens, err := spotify.ExchangeCodeForToken(code)
+	if err != nil {
+		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	redirectURL := frontendCallback + "?access_token=" + tokens.AccessToken + "&refresh_token=" + tokens.RefreshToken
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }

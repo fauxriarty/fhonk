@@ -8,11 +8,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	// "github.com/joho/godotenv"
 )
 
 func Status(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"message": "hello from da fhonk",
+		"message": "hello from da fhonk v0.1",
 	})
 }
 
@@ -22,6 +23,11 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+
+	// if godotenv.Load() != nil {
+	// 	log.Fatal("Error loading .env file")
+	// }
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL not set in environment")
