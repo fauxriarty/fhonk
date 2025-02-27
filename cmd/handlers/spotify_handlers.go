@@ -23,7 +23,7 @@ var (
 
 func SpotifyLoginHandler(c *gin.Context) {
 	authURL := fmt.Sprintf("%s?client_id=%s&response_type=code&redirect_uri=%s&state=%s&scope=user-read-private",
-		spotifyAuthURL, spotifyClientID, url.QueryEscape(spotifyRedirectURI), state)
+		spotifyAuthURL, spotifyClientID, spotifyRedirectURI, state)
 	c.Redirect(http.StatusTemporaryRedirect, authURL)
 }
 
