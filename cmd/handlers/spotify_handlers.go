@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,33 +31,16 @@ func SpotifyLoginHandler(c *gin.Context) {
 func SpotifyCallbackHandler(c *gin.Context) {
 	log.Println("Received Spotify callback request")
 
-	// Log the raw request body before parsing
-	rawBody, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		log.Printf("Error reading raw request body: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read request body"})
-		return
-	}
-
-	// Restore the body for subsequent reads
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(rawBody))
-
-	log.Printf("Raw request body: %s", string(rawBody))
-
-	// For POST requests, we need to read from the request body instead of URL query parameters
+	// Try to bind JSON data first
 	var requestBody struct {
 		Code  string `json:"code"`
 		State string `json:"state"`
 	}
-
-	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		log.Printf("Error binding JSON: %v", err)
-
-		// Try to debug the content type
-		log.Printf("Content-Type header: %s", c.GetHeader("Content-Type"))
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
-		return
+	err := c.ShouldBindJSON(&requestBody)
+	if err != nil || requestBody.Code == "" || requestBody.State == "" {
+		// Fallback to query parameters if JSON binding fails or data is missing
+		requestBody.Code = c.Query("code")
+		requestBody.State = c.Query("state")
 	}
 
 	log.Printf("Parsed request body - Code: %s, State: %s", requestBody.Code, requestBody.State)
