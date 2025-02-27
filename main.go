@@ -75,7 +75,7 @@ func setupRouter() *gin.Engine {
 		{
 			auth.GET("/apple", handlers.AppleMusicLoginHandler)
 			auth.GET("/spotify", handlers.SpotifyLoginHandler)
-			auth.GET("/spotify/callback", handlers.SpotifyCallbackHandler)
+			auth.POST("/spotify/callback", handlers.SpotifyCallbackHandler)
 		}
 	}
 
