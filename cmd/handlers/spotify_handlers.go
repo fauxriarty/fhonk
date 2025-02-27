@@ -28,12 +28,23 @@ func SpotifyLoginHandler(c *gin.Context) {
 }
 
 func SpotifyCallbackHandler(c *gin.Context) {
-	if c.Query("state") != state {
+	// For POST requests, we need to read from the request body instead of URL query parameters
+	var requestBody struct {
+		Code  string `json:"code"`
+		State string `json:"state"`
+	}
+
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if requestBody.State != state {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
 		return
 	}
 
-	code := c.Query("code")
+	code := requestBody.Code
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
