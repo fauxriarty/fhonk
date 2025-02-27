@@ -1,55 +1,75 @@
 package handlers
 
 import (
-	"fhonk/cmd/spotify"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Range")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+var (
+	spotifyAuthURL      = "https://accounts.spotify.com/authorize"
+	spotifyTokenURL     = "https://accounts.spotify.com/api/token"
+	spotifyClientID     = os.Getenv("SPOTIFY_CLIENT_ID")
+	spotifyClientSecret = os.Getenv("SPOTIFY_CLIENT_SECRET")
+	spotifyRedirectURI  = os.Getenv("SPOTIFY_REDIRECT_URI")
+	state               = "randomStateString"
+)
 
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
+func SpotifyLoginHandler(c *gin.Context) {
+	authURL := fmt.Sprintf("%s?client_id=%s&response_type=code&redirect_uri=%s&state=%s&scope=user-read-private",
+		spotifyAuthURL, spotifyClientID, url.QueryEscape(spotifyRedirectURI), state)
+	c.Redirect(http.StatusTemporaryRedirect, authURL)
 }
 
-func SpotifyLoginHandler(w http.ResponseWriter, r *http.Request) {
-	frontendCallback := r.URL.Query().Get("callback_url")
-	if frontendCallback == "" {
-		http.Error(w, "Missing callback URL", http.StatusBadRequest)
+func SpotifyCallbackHandler(c *gin.Context) {
+	if c.Query("state") != state {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
 		return
 	}
 
-	authURL := spotify.GenerateAuthURL(frontendCallback)
-	http.Redirect(w, r, authURL, http.StatusFound)
-}
+	code := c.Query("code")
+	data := url.Values{}
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", code)
+	data.Set("redirect_uri", spotifyRedirectURI)
+	data.Set("client_id", spotifyClientID)
+	data.Set("client_secret", spotifyClientSecret)
 
-func SpotifyCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	code := r.URL.Query().Get("code")
-	frontendCallback := r.URL.Query().Get("state")
-
-	if code == "" {
-		http.Error(w, "Missing authorization code", http.StatusBadRequest)
-		return
-	}
-
-	tokens, err := spotify.ExchangeCodeForToken(code)
+	req, err := http.NewRequest("POST", spotifyTokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
-		http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get token"})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response"})
 		return
 	}
 
-	redirectURL := frontendCallback + "?access_token=" + tokens.AccessToken + "&refresh_token=" + tokens.RefreshToken
-	http.Redirect(w, r, redirectURL, http.StatusFound)
+	var tokenResponse map[string]interface{}
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse response"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokenResponse["access_token"],
+		"refresh_token": tokenResponse["refresh_token"],
+	})
 }
