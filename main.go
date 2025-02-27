@@ -60,6 +60,22 @@ func setupRouter() *gin.Engine {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
+	// CORS middleware
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"}, // Allow all origins. For production, specify exact domains
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	})
+
+	// Apply the CORS middleware to the router
+	router.Use(func(c *gin.Context) {
+		corsMiddleware.HandlerFunc(c.Writer, c.Request)
+		c.Next()
+	})
+
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "up",
@@ -92,21 +108,6 @@ func main() {
 	defer db.CloseDB()
 
 	router := setupRouter()
-
-	corsMiddleware := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"}, // Allow all origins. For production, specify exact domains
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	})
-
-	// Apply the CORS middleware to the router
-	router.Use(func(c *gin.Context) {
-		corsMiddleware.HandlerFunc(c.Writer, c.Request)
-		c.Next()
-	})
 
 	srv := &http.Server{
 		Addr:    ":" + config.Port,
