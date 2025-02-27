@@ -33,6 +33,21 @@ func SpotifyLoginHandler(c *gin.Context) {
 func SpotifyCallbackHandler(c *gin.Context) {
 	log.Println("Received Spotify callback request")
 
+	var requestBody struct {
+		Code  string `json:"code"`
+		State string `json:"state"`
+	}
+
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		log.Printf("Error binding JSON: %v", err)
+
+		// Try to debug the content type
+		log.Printf("Content-Type header: %s", c.GetHeader("Content-Type"))
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
+	}
+
 	code := c.Query("code")
 	receivedState := c.Query("state")
 
@@ -41,12 +56,6 @@ func SpotifyCallbackHandler(c *gin.Context) {
 	if code == "" {
 		log.Println("Error: Empty authorization code received")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Empty authorization code"})
-		return
-	}
-
-	if receivedState != state {
-		log.Printf("State mismatch: got %s, expected %s", receivedState, state)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
 		return
 	}
 
