@@ -110,12 +110,12 @@ func SpotifyCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	// Check if there was an error in the token response
 	if tokenResponse["error"] != nil {
 		log.Printf("Spotify API error: %v", tokenResponse["error"])
+
+		// Return the Spotify error in a single field so the front end can see it easily.
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Spotify API error",
-			"details": tokenResponse["error"],
+			"error": tokenResponse["error"],
 		})
 		return
 	}
