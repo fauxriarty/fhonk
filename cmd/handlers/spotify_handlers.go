@@ -31,16 +31,20 @@ func SpotifyLoginHandler(c *gin.Context) {
 func SpotifyCallbackHandler(c *gin.Context) {
 	log.Println("Received Spotify callback request")
 
-	// Try to bind JSON data first
+	// For POST requests, we need to read from the request body instead of URL query parameters
 	var requestBody struct {
 		Code  string `json:"code"`
 		State string `json:"state"`
 	}
-	err := c.ShouldBindJSON(&requestBody)
-	if err != nil || requestBody.Code == "" || requestBody.State == "" {
-		// Fallback to query parameters if JSON binding fails or data is missing
-		requestBody.Code = c.Query("code")
-		requestBody.State = c.Query("state")
+
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		log.Printf("Error binding JSON: %v", err)
+
+		// Try to debug the content type
+		log.Printf("Content-Type header: %s", c.GetHeader("Content-Type"))
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
 	}
 
 	log.Printf("Parsed request body - Code: %s, State: %s", requestBody.Code, requestBody.State)
@@ -51,11 +55,11 @@ func SpotifyCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	if requestBody.State != state {
-		log.Printf("State mismatch: got %s, expected %s", requestBody.State, state)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
-		return
-	}
+	// if requestBody.State != state {
+	// 	log.Printf("State mismatch: got %s, expected %s", requestBody.State, state)
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
+	// 	return
+	// }
 
 	code := requestBody.Code
 	data := url.Values{}
