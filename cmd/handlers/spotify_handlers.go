@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"fhonk/cmd/db"
+	"fhonk/cmd/db/models"
 	"fmt"
 	"io"
 	"log"
@@ -31,37 +33,23 @@ func SpotifyLoginHandler(c *gin.Context) {
 func SpotifyCallbackHandler(c *gin.Context) {
 	log.Println("Received Spotify callback request")
 
-	// For POST requests, we need to read from the request body instead of URL query parameters
-	var requestBody struct {
-		Code  string `json:"code"`
-		State string `json:"state"`
-	}
+	code := c.Query("code")
+	receivedState := c.Query("state")
 
-	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		log.Printf("Error binding JSON: %v", err)
+	log.Printf("Received from Spotify - Code: %s, State: %s", code, receivedState)
 
-		// Try to debug the content type
-		log.Printf("Content-Type header: %s", c.GetHeader("Content-Type"))
-
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
-		return
-	}
-
-	log.Printf("Parsed request body - Code: %s, State: %s", requestBody.Code, requestBody.State)
-
-	if requestBody.Code == "" {
+	if code == "" {
 		log.Println("Error: Empty authorization code received")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Empty authorization code"})
 		return
 	}
 
-	// if requestBody.State != state {
-	// 	log.Printf("State mismatch: got %s, expected %s", requestBody.State, state)
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
-	// 	return
-	// }
+	if receivedState != state {
+		log.Printf("State mismatch: got %s, expected %s", receivedState, state)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
+		return
+	}
 
-	code := requestBody.Code
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
@@ -118,9 +106,71 @@ func SpotifyCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	log.Println("Successfully retrieved Spotify tokens")
+	accessToken := tokenResponse["access_token"].(string)
+	refreshToken := tokenResponse["refresh_token"].(string)
+
+	// Retrieve user profile from Spotify
+	userProfile, err := getSpotifyUserProfile(accessToken)
+	if err != nil {
+		log.Printf("Failed to get user profile: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user profile"})
+		return
+	}
+
+	// Store user data in the database
+	userData := models.UserData{
+		UserID:       userProfile.ID,
+		SpotifyID:    userProfile.ID,
+		DisplayName:  userProfile.DisplayName,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	if err := db.DB.Create(&userData).Error; err != nil {
+		log.Printf("Failed to save user data: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user data"})
+		return
+	}
+
+	log.Println("Successfully retrieved and stored Spotify user data")
 	c.JSON(http.StatusOK, gin.H{
-		"access_token":  tokenResponse["access_token"],
-		"refresh_token": tokenResponse["refresh_token"],
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 	})
+}
+
+type SpotifyUserProfile struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+}
+
+func getSpotifyUserProfile(accessToken string) (*SpotifyUserProfile, error) {
+	req, err := http.NewRequest("GET", "https://api.spotify.com/v1/me", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user profile: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get user profile: status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %v", err)
+	}
+
+	var userProfile SpotifyUserProfile
+	if err := json.Unmarshal(body, &userProfile); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	return &userProfile, nil
 }
