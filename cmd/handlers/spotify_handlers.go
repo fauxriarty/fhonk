@@ -33,6 +33,7 @@ func SpotifyLoginHandler(c *gin.Context) {
 func SpotifyCallbackHandler(c *gin.Context) {
 	log.Println("Received Spotify callback request")
 
+	// For POST requests, we need to read from the request body instead of URL query parameters
 	var requestBody struct {
 		Code  string `json:"code"`
 		State string `json:"state"`
@@ -48,17 +49,21 @@ func SpotifyCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	code := c.Query("code")
-	receivedState := c.Query("state")
+	log.Printf("Parsed request body - Code: %s, State: %s", requestBody.Code, requestBody.State)
 
-	log.Printf("Received from Spotify - Code: %s, State: %s", code, receivedState)
-
-	if code == "" {
+	if requestBody.Code == "" {
 		log.Println("Error: Empty authorization code received")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Empty authorization code"})
 		return
 	}
 
+	// if requestBody.State != state {
+	// 	log.Printf("State mismatch: got %s, expected %s", requestBody.State, state)
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "State mismatch"})
+	// 	return
+	// }
+
+	code := requestBody.Code
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
